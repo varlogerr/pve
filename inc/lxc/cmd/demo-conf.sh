@@ -43,9 +43,9 @@ echo "
     #   * ID            - immutable after the container creation
     #   * TEMPLATE      - immutable after the container creation
     #   * UNPRIVILEGED  - immutable after the container creation
-    #   * ROOT_PASS     - immutable after the container creation
-    * * With any setting but required ones removed or set to empty they won't be
-    *   applied.
+    #   * ROOT_PASS
+    # * With any setting but required ones removed or set to empty they won't be
+    #   applied.
     #
     # The basic idea of presets is:
     # * To hide some sensitive information about your infra. Same can be
@@ -99,6 +99,10 @@ echo "
     IP=192.168.0.69/24
     USER_NAME=foo         # Can be overriden by 'user' preset
     USER_PASS=qwerty
+    USER_GROUP=foo
+    USER_UID=1001
+    USER_GID=1002
+    USER_HOME=/home/foo
     PRESETS=(docker vpn)
     BIND_MOUNT=(
       # Format: 'HOST_DIR:LXC_DIR'
