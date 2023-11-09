@@ -9,23 +9,34 @@ TARGET_REMOTE_MARKER='s?NXs#{Bb8}ir:4ehUok633iQ0>k5uM~'
   # It is a remote, prevent recursion
   unset TARGET_REMOTE; shift
 
-  TEMPLATE=almalinux-9-default_20221108_amd64.tar.xz
+  TEMPLATE=almalinux-8-default_20210928_amd64.tar.xz
+  ID=141
+  IP=192.168.69.41/24
+  GATEWAY=192.168.69.1
+
   TPLS_URL=http://download.proxmox.com/images/system
 
-  TPL_FILE="$(set -x; mktemp --suffix .image.tar.xz)"
-  (set -x; curl -kLsS "${TPLS_URL}/${TEMPLATE}" | tee -- "${TPL_FILE}" >/dev/null)
+  if ! (set -x; pct list | sed '1 d' | grep -q "^${ID}[^0-9]"); then
+    TPL_FILE="$(set -x; mktemp --suffix .image.tar.xz)"
+    (set -x; curl -kLsS "${TPLS_URL}/${TEMPLATE}" | tee -- "${TPL_FILE}" >/dev/null)
 
+    (set -x
+      # Create container
+      pct create "${ID}" \
+        "${TPL_FILE}" \
+        -storage "local-lvm" \
+        -unprivileged 0 \
+        -password "changeme"
+    ) 3>&2 2>&1 1>&3 \
+    | sed 's/\(\s-password\)\( .\+\)/\1 *****/' 3>&2 2>&1 1>&3
+    (set -x; rm -f "${TPL_FILE}")
+  fi
+
+  (set -x; pct resize ${ID} rootfs 5G)
   (set -x
-    # Create container
-    pct create "141" \
-      "${TPL_FILE}" \
-      -storage "local-lvm" \
-      -unprivileged 0 \
-      -password "changeme"
+    pct set ${ID} -net0 name=eth0,bridge=vmbr0,firewall=1,ip=${IP},gw=${GATEWAY}
   ) 3>&2 2>&1 1>&3 \
-  | sed 's/\(\s-password\)\( .\+\)/\1 *****/' 3>&2 2>&1 1>&3
-
-  rm -f tmp
+  | sed 's/\(,\(ip\|gw\)=\)[^,]\+/\1*****/g'
 }
 
 [[ -n "${TARGET_REMOTE+x}" ]] || exit 0
