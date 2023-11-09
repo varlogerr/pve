@@ -1,0 +1,7 @@
+[mariadb-main]
+name = MariaDB Server
+baseurl = https://dlm.mariadb.com/repo/mariadb-server/{{ VERSION }}/yum/rhel/$releasever/x86_64
+gpgkey = https://supplychain.mariadb.com/MariaDB-Server-GPG-KEY
+gpgcheck = 1
+enabled = 1
+module_hotfixes = 1
