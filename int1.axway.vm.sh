@@ -33,11 +33,26 @@ TARGET_REMOTE_MARKER='s?NXs#{Bb8}ir:4ehUok633iQ0>k5uM~'
   fi
 
   (set -x; pct resize ${ID} rootfs 5G)
-  (set -x
-    pct set ${ID} -net0 name=eth0,bridge=vmbr0,firewall=1,ip=${IP},gw=${GATEWAY}
-  ) 3>&2 2>&1 1>&3 \
-  | sed 's/\(,\(ip\|gw\)=\)[^,]\+/\1*****/g'
-}
+  (set -x; pct set ${ID} -net0 name=eth0,bridge=vmbr0,firewall=1,ip=${IP},gw=${GATEWAY}) \
+    3>&2 2>&1 1>&3 | sed 's/\(,\(ip\|gw\)=\)[^,]\+/\1*****/g'
+
+  declare -a dev_conf=(
+    # Allow VPN
+    'lxc.mount.entry: /dev/net dev/net none bind,create=dir 0 0'
+    'lxc.cgroup2.devices.allow: c 10:200 rwm'
+    # Docker
+    'lxc.apparmor.profile: unconfined'
+    'lxc.cgroup2.devices.allow: a'
+    'lxc.cap.drop:'
+  )
+
+  for conf in "${dev_conf[@]}"; do
+    file="/etc/pve/lxc/${ID}.conf"
+    grep -qFx "${conf}" "${file}" || (
+      set -x; printf -- '%s\n' "${conf}" | tee -a "${file}" >/dev/null
+    )
+  done
+} # END OF LXC CONF
 
 [[ -n "${TARGET_REMOTE+x}" ]] || exit 0
 
