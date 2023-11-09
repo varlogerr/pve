@@ -172,3 +172,46 @@
       cat -- "${@:2}" | sed 's/^/'"${escaped}"'/'
   }
 } # {{ SNIP_SHLIB }}
+
+dl_to_stdout() {
+  declare dl_url; dl_url="${1}"
+  declare -a dl_tool=(curl -kLsS)
+
+  "${dl_tool[@]}" --version &>/dev/null || {
+    dl_tool=(wget -qO -); "${dl_tool[@]}" --version &>/dev/null
+  } || { log_warn "Can't detect download tool." >&2; return 1; }
+
+  "${dl_tool[@]}" -- "${dl_url}"
+}
+
+file_vars() (
+  # Very random names for local names
+  declare undel_txt_Lup6XAN2rqqwTz_jW4je
+  declare -a undel_Lup6XAN2rqqwTz_jW4je=(
+    undel_txt_Lup6XAN2rqqwTz_jW4je
+    v_Lup6XAN2rqqwTz_jW4je
+    undel_Lup6XAN2rqqwTz_jW4je
+  )
+
+  print_current_vars() {
+    # https://askubuntu.com/a/275972
+    (set -o posix; set) \
+    | /usr/bin/env grep -io '^\([[:alnum:]]\|_\)\+=' | /usr/bin/env sed 's/=$//' \
+    | /usr/bin/env grep -vxFf <(/usr/bin/env printf -- '%s\n' "${undel_Lup6XAN2rqqwTz_jW4je[@]}")
+  }
+
+  # Unset variables that can be unset
+  while read -r v_Lup6XAN2rqqwTz_jW4je; do
+    # Unset the variable or add to undel list
+    unset -v "${v_Lup6XAN2rqqwTz_jW4je}" &>/dev/null
+  done <<< "$(print_current_vars)"
+
+  # Put all undeleted variables to the list
+  undel_txt_Lup6XAN2rqqwTz_jW4je="$(print_current_vars)"
+  [[ -n "${undel_txt_Lup6XAN2rqqwTz_jW4je}" ]] && undel_Lup6XAN2rqqwTz_jW4je+=("${undel_txt_Lup6XAN2rqqwTz_jW4je[*]}")
+
+  # shellcheck disable=SC1090
+  . "${1}"
+
+  print_current_vars
+)
