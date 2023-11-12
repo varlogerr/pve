@@ -63,6 +63,25 @@ get_conf_vars_txt() (
 )
 
 deploy() (
+  CACHED=false
+  _cache_get() {
+    declare dir="/tmp/${LXC_CONF[ID]}.repo.pve"
+    declare file="${dir}/${1}"
+
+    ${CACHED} && {
+      CACHED=true
+      (set -x; cat "${file}" 2>/dev/null) && return 0
+    }
+
+    (set -x; rm -rf "${dir}"; mkdir -p "${dir}")
+
+    ( set -o pipefail; set -x
+      curl -sSL https://api.github.com/repos/varlogerr/pve/tarball/master \
+      | tar -xzf - -C "${dir}"
+    ) && mv "${dir}"/*/* "${dir}" \
+    && (set -x; cat "${file}" 2>/dev/null)
+  }
+
   create() {
     pct list | sed '1 d' | grep -q "^${LXC_CONF[ID]}[^0-9]" && {
       echo "[INFO] CT exists: '${LXC_CONF[ID]}'." >&2
@@ -132,7 +151,7 @@ deploy() (
       | tr ' ' '\n' | sed -e '/^\s*$/d' -e 's/^\s*//' -e 's/\s*$//' -e '/^#/d' \
       | grep -Fxf <(printf -- '%s\n' "${!PRESETS[@]}")
     )" || {
-      echo "[INFO] No presets requested."
+      echo "[INFO] No presets requested." >&2
       return 0
     }
 
@@ -185,7 +204,7 @@ deploy() (
       set -o pipefail; grep -v '^\s*#'  <<< "${LXC_CONF[TOOLBOX]}" \
       | tr ' ' '\n' | sed -e '/^\s*$/d' -e 's/^\s*//' -e 's/\s*$//'
     )" || {
-      echo "[INFO] No toolbox requested."
+      echo "[INFO] No toolbox requested." >&2
       return 0
     }
 
@@ -197,7 +216,6 @@ deploy() (
 
     declare -a TOOLBOX; mapfile -t TOOLBOX <<< "${toolbox_req}"
 
-    declare TOOLBOX_URL=https://raw.githubusercontent.com/varlogerr/pve/master/toolbox
     declare WAS_RUNNING=false
     pct status "${LXC_CONF[ID]}" | grep -q 'running$' && WAS_RUNNING=true
 
@@ -217,8 +235,9 @@ deploy() (
       '(set -x; grep -o "^[0-9]\\+" /proc/uptime 2>/dev/null)')"
     [[ "${uptime:-0}" -lt 5 ]] && sleep $(( 5 - "${uptime:-0}" ))
 
+    _cache_get "toolbox/init/apply.sh" | pct exec "${LXC_CONF[ID]}" -- bash -s
     declare i; for i in "${TOOLBOX[@]}"; do
-      (set -x; curl -sSL "${TOOLBOX_URL}/${i}/apply.sh") | pct exec "${LXC_CONF[ID]}" -- bash -s
+      _cache_get "toolbox/${i}/apply.sh" | pct exec "${LXC_CONF[ID]}" -- bash -s
     done
 
     # Shut down the CT only if it was not running
@@ -282,6 +301,7 @@ print_help() (
    ,
     In the configuration block presets are new line or space
     separated. Offset, empty or #-comment lines ignored.
+    gp-client tool requires vpn and docker presets + privileged.
   "; }
 
   toolbox() {
