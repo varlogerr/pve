@@ -63,13 +63,11 @@ get_conf_vars_txt() (
 )
 
 deploy() (
-  CACHED=false
   _cache_get() {
     declare dir="/tmp/${LXC_CONF[ID]}.repo.pve"
     declare file="${dir}/${1}"
 
-    ${CACHED} && {
-      CACHED=true
+    ${_CACHE_GET_CACHED-false} && {
       (set -x; cat "${file}" 2>/dev/null) && return 0
     }
 
@@ -237,6 +235,7 @@ deploy() (
 
     _cache_get "toolbox/init/apply.sh" | pct exec "${LXC_CONF[ID]}" -- bash -s
     declare i; for i in "${TOOLBOX[@]}"; do
+      _CACHE_GET_CACHED=true
       _cache_get "toolbox/${i}/apply.sh" | pct exec "${LXC_CONF[ID]}" -- bash -s
     done
 
